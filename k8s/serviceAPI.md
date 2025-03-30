@@ -226,15 +226,184 @@ spec:
 
 ## Headless
 
-Coming soon
+Headless Service は、ロードバランシングするための IP アドレスは提供されず、DNS Round Robin（DNS RR）を使ったエンドポイントを提供する。<br>
+
+※ちなみにこれまでの各 Service ってどんなだっけ。を簡単に振り返ると下記の通り。（下表参照）
+
+| Service の種類 | 提供するエンドポイントの内容                                     |
+| :------------- | :--------------------------------------------------------------- |
+| ClusterIP      | Kubernetes クラスタ内でのみ利用可能な Internal Network の仮想 IP |
+| ExternalIP     | 特定の Kubernetes Node の IP                                     |
+| NodePort       | 全 Kubernetes Node の全 IP アドレス                              |
+| LoadBalancer   | クラスタ外で提供されている LoadBalancer の仮想 IP                |
+
+DNS RR を使ったエンドポイントを提供する。と言われてもピンとこないので、
+
+- 動作イメージ
+- ユースケース
+  の二つに分けてもう少し説明を加える。
+
+### 動作イメージ：
+
+＜通常の Service ＞
+
+```mermaid
+graph LR
+A(クライアント) --> B(ServiceIP / ClusterIP)
+B(ServiceIP / ClusterIP) --> kube-proxyでPodへ振り分け
+```
+
+- クライアントは常に 1 つの仮想 IP（VIP）にアクセスし、その後複数の Pod へロードバランシングされる
+  <br>
+
+＜ Headless Service ＞
+
+```mermaid
+graph LR
+A(クライアント) --> B(DNS名前解決) --> C(Pod一覧を取得) --> D(アプリ側ロジックなどでPodにアクセス)
+```
+
+- 1 つの仮想 IP が存在しない
+- DNS クエリ時に複数 Pod の A レコード（Address Record）が返される
+- クライアント（アプリ）がどの Pod にアクセスするか自由に決定できる
+
+### ユースケース
+
+前述の内容の再掲になる部分もあるが、ユースケースを 3 つぐらい取り上げる
+
+1. Pod へ直接アクセスしたいとき：<br>
+   アプリケーション側で独自に負荷分散などを行いたい場合に、Pod ひとつひとつの IP を指定して直接アクセスしたいときがある
+1. Statefulset との組み合わせ：← これ実際に多そう<br>
+   Statefulset はレプリカごとにユニークな DNS ホスト名が割り当てられます。<br>
+   ※pod-name.headless-service-name.namespace.svc.cluster.local 　で勝手に名前が付けられるんでしたよね。<br>
+   つまり、永続的かつユニークな FQDN を持てるため、Pod の再スケジューリングが起きても通信先のホスト名が変わらずに済む
+1. DNS ベースで Pod のリストを取得したい場合<br>
+   Headless Service を介して DNS のクエリを実行すると、Service ではなく Pod 自身の IP アドレスが返ってくる。Pod 直結の IP アドレスが欲しい時には非常に役立つ。
+
+<br>
+マニフェストはこんな感じ ↓
+
+<details><summary>Headless Serviceを作成する際のマニフェスト例(.yaml)</summary>
+
+```
+apiVersion: example1
+kind: Service
+metadata:
+    name: example-headless
+spec:
+    type: ClusterIP             //typeでClusterIPを指定
+    ClusterIP: None             //ClusterIPでNoneを指定
+    ports:
+    - name: "http-port"
+      protocol: "TCP"
+      port: 80
+      targetPort: 80
+    selector:
+      app: example-app
+```
+
+</details>
 
 ## ExternalName
 
-Coming soon
+ExternalName は、Kubernetes の Service の中でも特殊なタイプの Service である。<br>
+これまで取り上げてきた Service（ClusterIP / NodePort / LoadBalancer / Headless）が Pod への通信のための経路を作るのに対し、ExternalName はまったく別の外部ホスト名（FQDN）へのエイリアス（別名）を作るだけのものである。
+
+マニフェストはこんな感じ ↓
+
+<details><summary>ExternalName Serviceを作成する際のマニフェスト例(.yaml)</summary>
+
+```
+apiVersion: example1
+kind: Service
+metadata:
+    name: example-externalname
+    namespace: default
+spec:
+    type: ExternalName                    //typeでClusterIPを指定
+    externalName: external.example.com    //外部のドメイン名を指定
+```
+
+</details>
+
+<br>
+言葉だけでもなんとなくのイメージはつくかもしれないが、一応ユースケースも載せておく。<br>
+
+- 外部サービスへの名前付きアクセスポイントを提供する<br>
+  アプリケーションが外部の API やデータベースを利用していて、それを Kubernetes 内の Service 名として扱いたいとき、アプリ側は、my-database.default.svc.cluster.local にアクセスするだけで済む。
+
+```
+外部サービス: mydb.rds.amazonaws.com
+内部で使いたい名前: my-database
+```
+
+- 開発~本番での環境設定の変更を最小限にする<br>
+  例えば、開発段階ではローカルの DB コンテナに向け、本番では RDS（Amazon RDS）に向けたいときでも、Service 名のみの切り替えで済む。
+
+<br>
 
 ## None-Selector
 
-Coming soon
+None-Selector Service とは、Selector を省略 or 指定しないことで、Service がどの Pod にも自動で紐づかないようにする Service です。
+<br>
+
+おさらいですが、これまで Service のマニフェストでは下記のように spec.selector で、ラベル対象の Pod を自動的に選びトラフィックをルーティングしていました。
+
+```yaml
+spec:
+  selector:
+    app: example-app # app: example-appを持つPodに自動的にトラフィックを流す
+```
+
+None-Selector Service は、その逆で Selector を省略 or 指定しないことで、Service がどの Pod にも自動で紐づかないようにします。
+
+<details><summary>Selectorを指定しないで Serviceを作成する際のマニフェスト例(.yaml)</summary>
+
+```yaml
+apiVersion: example1
+kind: Service
+metadata:
+  name: example-none-selector-svc
+spec:
+  ports:
+    - port: 80
+      targetPort: 8080
+```
+
+</details>
+
+<br>
+くどいですが、Selector を指定しなかったらどうなるのか。答えは簡単で、このServiceにアクセスしても、KubernetesはどのPodにもトラフィックを送れなくなる。<br>
+そこで、自分でエンドポイントを定義してどこに送るか明示してあげることになる。<br>
+<br>
+
+<details><summary>エンドポイントを指定したNone-Selector Serviceのマニフェスト例(.yaml)</summary>
+
+```yaml
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: my-none-selector-svc
+subsets:
+  - addresses:
+      - ip: 10.0.1.101
+      - ip: 10.0.1.102
+    ports:
+      - port: 8080
+```
+
+これで、Service `my-none-selector-svc` に送られたリクエストは、10.0.1.101 や 10.0.1.102 に転送される。
+
+</details>
+
+<br>
+
+かなり特殊な Service なので、使い方は限られるがユースケースとしては、下記が挙げられる
+
+- Kubernetes 外部の Pod や VM にルーティングしたいとき
+- 外部にロードバランシングしたい状況
+
+<br>
 
 # Ingress
 
