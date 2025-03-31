@@ -407,4 +407,145 @@ subsets:
 
 # Ingress
 
-Coming soon
+これまで解説してきた Service リソースが L4 ロードバランシングを提供する機能だったのに対し、Ingress リソースは、L7 ロードバランシングを提供する機能である。
+例えば、クラスタ外から HTTP/HTTPS リクエストを受け取った際に、ルールに基づいて内部の Service にルーティングしてくれたりする。<br>
+言い換えると、「Kubernetes の中にある Web サービスを、ひとつの入口でまとめて公開するためのゲートウェイ」として利用するリソースである。
+
+### 概要
+
+- 通常、外部からアクセスしたいときは NodePort や LoadBalancer を使うが、それぞれの Service ごとに公開すると ポートや IP が増えて管理が大変になる。
+- Ingress を使えば、1 つのエンドポイント（IP + ポート 80/443）に集約し、ホスト名やパスに応じて Service を振り分けることができる。
+
+### Ingress Controller
+
+前述のとおり、Ingress はリソース（ルールの定義）であるが、実際にそのルールに従ってトラフィックをさばくのは Ingress Controller というコンポーネントである。<br>
+※実はこれまでのリソースにも Contrller という概念があるがややこしいのでそれは別で解説を書く。
+
+Ingress Controller はいくつか種類があり、それによって構成が変わってくるのでここでは「GKE Ingress」に絞って解説をしていく。<br>
+GKE Ingress は、Google Kubernetes Engine Ingress の略で、Google Cloud Load Balancer（GCLB）という外部のロードバランサを構築して利用する。<br>
+
+構成イメージはこんな感じ ↓
+
+```mermaid
+graph LR
+A(クライアント（ブラウザ）) --> B(Google Cloud Load Balancer（GCLB）) --> C( GKE Ingress Controller ) --> D(Kubernetes Ingress リソース ) --> E( 各 Service → Pod )
+```
+
+<br>
+GKE Ingressを構築すると、GKEが自動でL7ロードバランサを作成し、GoogleCloudのリソースと連携する。<br>
+<br>
+GKE Ingress を作成するマニフェスト（.yaml）はこんな感じ ↓
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+  annotations:
+    kubernetes.io/ingress.class: "gce" # GKE Ingressを作る際はgceと指定するだけでOK
+spec:
+  rules:
+    - host: myapp.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
+```
+
+基本は上記のマニフェストのとおりだが、他にもいくつか設定を作りこめるものがあるので 2 つだけ取り上げておく。<br>
+
+### 1：HTTPS を使いたい場合の設定<br>
+
+下記のようなマネージド SSL 証明書を使う場合、
+
+```yaml
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: my-cert
+spec:
+  domains:
+    - myapp.example.com
+```
+
+下記のように Ingress の`metadata.annotation`に追加する。
+
+```yaml
+metadata:
+  annotations:
+    networking.gke.io/managed-certificates: my-cert
+```
+
+### ケース 2：BackendConfig / FrontendConfig<br>
+
+GKE Ingress から転送される Service（バックエンド）側の挙動を制御したり、<br>
+Google Cloud Load Balancer のフロント側、つまりクライアントから受けるリクエスト側の動作を調整したりもできる。
+
+BackendConfig の定義例：
+
+```yaml
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: api-backend-config
+spec:
+  timeoutSec: 30 # タイムアウトを30秒
+  connectionDraining:
+    drainingTimeoutSec: 60 # Podが終了するときに60秒間待つ
+  sessionAffinity:
+    affinityType: "GENERATED_COOKIE" # クッキーによるセッションアフィニティを有効
+  healthCheck:
+    requestPath: /healthz # /healthz に対してヘルスチェックを実施
+    port: 8080
+```
+
+<br>
+FrontendConfigの定義例：
+
+```yaml
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  name: my-frontend-config
+spec:
+  redirectToHttps:
+    enabled: true # HTTP でアクセスしてきたクライアントは HTTPS に自動リダイレクト
+  sslPolicy: my-ssl-policy # GCに作成済みの my-ssl-policy を適用(TLSのバージョンなど)
+```
+
+<br>
+BackendConfig / FrontendConfigのいずれも下記のようにIngressの`metadata.annotation`に追加すればOK。
+
+```yaml
+metadata:
+  annotations:
+    cloud.google.com/backend-config: '{"default": "api-backend-config"}'
+    networking.gke.io/frontend-config: my-frontend-config
+```
+
+<br>
+
+### XFF ヘッダによるクライアント IP アドレスの参照
+
+Ingress 経由で送られてくるトラフィックには基本的に「X-Forwarded-For（XFF）」ヘッダが付与されていて、クライアント IP アドレス（送信元 IP アドレス）が参照できるようになっている。<br>
+ただ GKE の場合だと、厳密にはクライアントから Ingress に直接トラフィックが流れてきているわけではない。<br>
+GKE を使った場合と使わない場合にそれぞれどう見えるかというと、こんな感じになる。↓
+
+```yaml
+X-Forwarded-For: 203.0.113.45                # クライアントのIPだけが見える
+X-Forwarded-For: <クライアントIP>, <LBのIP>   # クライアントとGCLB両方のIPが見える
+```
+
+<br>
+
+### Ingress Class
+
+最後に、Ingress Class という機能についてもキーワードだけ挙げておく。<br>
+Ingress を複数作成すると Ingress Controller もそれぞれに作成されるが、Ingress Controller はクラスタに存在するすべての Ingress を監視しているため、予期せぬ挙動になることがある。<br>
+そのため、Ingress Class のアノテーションを付与してどの Ingress を監視するのか指定する必要がある。<br>
+ただ、実は GKE の場合だと、`metadata.annotations.kubernetes.io/ingress.class`に gce を指定しており、明示的に GKE Ingress を見るように指定できている。仮に、複数の GKE Ingress を作る場合も、`spec.ingressClassName`に`gce`、`gce-internal`とそれぞれ指定すれば Ingress Controller が予期せぬ挙動になることはない。
