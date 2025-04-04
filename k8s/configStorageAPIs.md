@@ -165,6 +165,79 @@ spec:
 
 ## 3. Secret
 
+### Secret の概要と使い方
+
+Secret リソース とは、パスワードや API キー、認証トークンなどの機密情報を安全に管理・利用するための仕組み。
+<br>
+
+Secret のマニフェストイメージ：
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+type: Opaque # typeには色々種類があるのでそれはあとで解説
+data: # Base64でエンコードされた文字列
+  username: dXNlcm5hbWU=
+  password: cGFzc3dvcmQ=
+```
+
+data の中身に Secret で管理したい値を入れるが、base64 でエンコードされているだけで bcrypt でハッシュ化したりといった暗号化処理はされていないのが注意ポイント。<br>
+また、マニフェストから Secret リソースを作成する場合は、base64 でエンコードした文字列を直接定義ファイルに入力しなければならない。<br>
+※Secret が定義されたマニフェストを暗号化するオープンソースソフトウェアもあるみたいだがそれは追々まとめる。
+
+Secret の使い方は主に 2 つある。
+
+1. 環境変数として渡す。<br>
+   これは[前述](#secret-リソースの機密情報)で説明済み。<br>
+   アプリ内では通常の環境変数として参照可能。
+
+```bash
+echo $DB_USERNAME
+echo $DB_PASSWORD
+```
+
+<br>
+2. ボリュームとしてマウントする。<br>
+PodリソースにボリュームとしてマウントすることでSecret管理している機密情報を取得できる。<br>
+podマニフェスト例：
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-volume-example
+spec:
+  containers:
+    - name: app
+      image: busybox
+      command: ["sleep", "3600"]
+      volumeMounts:
+        - name: my-secret-volume
+          mountPath: "/etc/secrets"
+          readOnly: true # アプリがファイルを書き換えないようにtrueが推奨
+  volumes:
+    - name: my-secret-volume
+      secret:
+        secretName: my-secret
+```
+
+<br>
+
+### Secret の分類
+
+Secret リソースで定義できる type にはいくつか種類がある。（下表参照）
+| type | 概要 |
+| :------------- | :--------------------------------------------------------------- |
+| Opaque | 一般的な汎用用途 |
+| kubernetes.io/tls | TLS 証明書用 |
+| kubernetes.io/basic-auth | Basic 認証用 |
+| kubernetes.io/dockerconfigjson | Docker レジストリの認証情報用 |
+| kubernetes.io/ssh-auth | SSH の認証情報用 |
+| kubernetes.io/service-account-token | Service Account のトークン用 |
+| bootstrap.kubernetes.io/token | Bootstrap トークン用 |
+
 ## 4. ConfigMap
 
 ## 5. PersistentVolumeClaim
