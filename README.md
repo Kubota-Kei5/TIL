@@ -10,6 +10,15 @@ Today I learned 略して TIL は、とにかく全部 git で管理しようぜ
 
 ## ディレクトリ構成
 
+```
+.
+├── README.md
+└── k8s
+    ├── configStorageAPIs.md
+    ├── serviceAPIs.md
+    └── workloadsAPIs.md
+```
+
 ### `k8s/`
 
 - 基本的には皆さんおなじみの完全ガイドで学んだことを記録していきます。
