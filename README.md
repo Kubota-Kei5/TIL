@@ -11,16 +11,14 @@ Today I learned 略して TIL は、とにかく全部 git で管理しようぜ
 ## ディレクトリ構成
 
 <!-- tree-start -->
-
+<!-- tree-start -->
 ```
 .
-├── README.md
+├── front
 └── k8s
-    ├── configStorageAPIs.md
-    ├── serviceAPIs.md
-    └── workloadsAPIs.md
-```
 
+3 directories
+```
 <!-- tree-end -->
 
 ※tree に関しては更新が面倒なので自動化できないか検討中
