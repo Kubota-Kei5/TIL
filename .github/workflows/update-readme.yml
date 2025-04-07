@@ -1,0 +1,36 @@
+name: Update README with Tree
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install tree
+        run: sudo apt-get install -y tree
+
+      - name: Generate tree and update README
+        run: |
+          echo "<!-- tree-start -->" > tree_section
+          tree -L 1 -d >> tree_section
+          echo "<!-- tree-end -->" >> tree_section
+
+          awk '/<!-- tree-start -->/{print;while(getline<"tree_section")print;flag=1;next}
+               /<!-- tree-end -->/{flag=0;next}
+               !flag' README.md > README.tmp
+
+          mv README.tmp README.md
+          rm tree_section
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git diff --quiet || (git add README.md && git commit -m "Update tree in README" && git push)
