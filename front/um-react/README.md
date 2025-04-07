@@ -9,7 +9,6 @@ https://www.udemy.com/course/react-complete-guide/
 
 ```
 .
-├── README.md
 ├── notes
 └── react-guide-material
 ```
