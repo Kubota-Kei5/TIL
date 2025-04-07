@@ -10,6 +10,8 @@ Today I learned 略して TIL は、とにかく全部 git で管理しようぜ
 
 ## ディレクトリ構成
 
+<!-- tree-start -->
+
 ```
 .
 ├── README.md
@@ -18,6 +20,10 @@ Today I learned 略して TIL は、とにかく全部 git で管理しようぜ
     ├── serviceAPIs.md
     └── workloadsAPIs.md
 ```
+
+<!-- tree-end -->
+
+※tree に関しては更新が面倒なので自動化できないか検討中
 
 ### `k8s/`
 
