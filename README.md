@@ -11,7 +11,7 @@ Today I learned 略して TIL は、とにかく全部 git で管理しようぜ
 ## ディレクトリ構成
 
 <!-- tree-start -->
-<!-- tree-start -->
+
 ```
 .
 ├── front
@@ -19,6 +19,7 @@ Today I learned 略して TIL は、とにかく全部 git で管理しようぜ
 
 3 directories
 ```
+
 <!-- tree-end -->
 
 ※~~tree に関しては更新が面倒なので自動化できないか検討中~~ (2025/04/08 done)
