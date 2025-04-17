@@ -1,6 +1,6 @@
 "use client";
 // POINT Server Actionsの使い方
-import ArticleList from "../../components/articleList";
+import ArticleList from "../components/articleList";
 import ArticleForm from "./components/form";
 import { useEffect, useState } from "react";
 
