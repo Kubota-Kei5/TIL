@@ -7,9 +7,7 @@ export default function Home() {
       {navList.map((item) => {
         return (
           <li key={item}>
-            <Link href={`/${item}`}>
-              {item}
-            </Link>
+            <Link href={`/${item}`}>{item}</Link>
           </li>
         );
       })}
