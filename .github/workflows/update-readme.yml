@@ -22,20 +22,10 @@ jobs:
           tree -L 1 -d >> tree_section
           echo '```' >> tree_section
 
-          awk '
-            /<!-- tree-start -->/{
-              print
-              while(getline line < "tree_section" ) print line
-              next
-            }
-            /<!-- tree-end -->/{
-              print
-              next
-            }
-            { print }
-          ' README.md > README.tmp
+          sed -i '/<!-- tree-start -->/,/<!-- tree-end -->/{//!d;}' README.md
 
-          mv README.tmp README.md
+          sed -i '/<!-- tree-start -->/r tree_section' README.md
+
           rm tree_section
 
       - name: Commit and push if changed
