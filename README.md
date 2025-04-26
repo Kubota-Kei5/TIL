@@ -8,7 +8,6 @@ Today I learned 略して TIL は、とにかく全部 git で管理しようぜ
 ## ディレクトリ構成
 
 <!-- tree-start -->
-
 ```
 .
 ├── front
@@ -16,7 +15,6 @@ Today I learned 略して TIL は、とにかく全部 git で管理しようぜ
 
 3 directories
 ```
-
 <!-- tree-end -->
 
 ## 学習予定（※は調べるだけ。）
