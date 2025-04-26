@@ -18,15 +18,22 @@ jobs:
 
       - name: Generate tree and update README
         run: |
-          echo "<!-- tree-start -->" > tree_section
           echo '```' >> tree_section
           tree -L 1 -d >> tree_section
           echo '```' >> tree_section
-          echo "<!-- tree-end -->" >> tree_section
 
-          awk '/<!-- tree-start -->/{print;while(getline<"tree_section")print;flag=1;next}
-               /<!-- tree-end -->/{flag=0;next}
-               !flag' README.md > README.tmp
+          awk '
+            /<!-- tree-start -->/{
+              print
+              while(getline line < "tree_section" ) print line
+              next
+            }
+            /<!-- tree-end -->/{
+              print
+              next
+            }
+            { print }
+          ' README.md > README.tmp
 
           mv README.tmp README.md
           rm tree_section
