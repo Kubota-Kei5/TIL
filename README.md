@@ -21,13 +21,17 @@ Today I learned 略して TIL は、とにかく全部 git で管理しようぜ
 
 - FY2025 上期
 
-  - AtCoder で茶色コーダーになる → python で入茶後、TS で茶レート keep
-  - Tekton※
-  - Grafana Loki※
-  - Datadog
-  - TypeScript × Next.js × Supabase でアプリ作る（認証付き）
+  - ~~AtCoder で茶色コーダーになる → python で入茶後、TS で茶レート keep~~ Done
+  - ~~Tekton※~~ Suspended
+  - ~~Grafana Loki※~~ Suspended
+  - ~~Datadog~~ Suspended
+  - ~~TypeScript × Next.js × Supabase でアプリ作る（認証付き）~~ Done
   - GraphQL でアプリ作る
+  - Go に入門する
+  - Goつかった個人開発
+  - AtCoder の使用言語を Go にコンバート（あわよくば緑コーダーになりたい。）
+ 
 
 - FY2025 下期
-  - Go に入門する + 実務で触る（無理なら個人開発）
-  - AtCoder の使用言語を Go にコンバート（あわよくば緑コーダーになりたい。）
+  - ~~Go に入門する + 実務で触る（無理なら個人開発）~~ Moved
+  - ~~AtCoder の使用言語を Go にコンバート（あわよくば緑コーダーになりたい。）~~ Moved
